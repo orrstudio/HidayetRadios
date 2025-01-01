@@ -19,10 +19,19 @@
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/netinfo": "11.4.1",
     "expo-device": "~7.0.1",
-    "expo-application": "~6.0.1"
+    "expo-application": "~6.0.1",
+    "expo-av": "~14.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "android": {
+      "useNextNotificationsApi": true,
+      "permissions": [
+        "android.permission.INTERNET"
+      ]
+    }
+  }
 }
