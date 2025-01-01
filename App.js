@@ -194,8 +194,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'black'
   },
   audioPlayer: {
-    width: 0,
-    height: 0
+    width: '100%',
+    height: 250,
+    backgroundColor: 'black'
   },
   channelList: {
     flex: 1
