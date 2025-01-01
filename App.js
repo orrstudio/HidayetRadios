@@ -31,26 +31,18 @@ export default function App() {
   ];
 
   useEffect(() => {
-    const setupAudio = async () => {
-      try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: true,
-        });
-        setPlayerReady(true);
-      } catch (error) {
-        console.error('Ошибка настройки аудио:', error);
-        Alert.alert('Ошибка', `Не удалось настроить аудио: ${error.message}`);
-      }
-    };
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+    });
 
-    setupAudio();
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.unloadAsync();
-      }
-    };
+    const defaultStream = streams[4]; // 5-й канал
+    videoRef.current.loadAsync(
+      { uri: defaultStream.url, type: 'hls' },
+      { shouldPlay: true }
+    ).then(() => {
+      setCurrentStream(defaultStream);
+    });
   }, []);
 
   const checkNetworkConnection = async () => {
@@ -70,11 +62,6 @@ export default function App() {
   const playStream = async (stream) => {
     const isConnected = await checkNetworkConnection();
     if (!isConnected) return;
-
-    if (!playerReady) {
-      Alert.alert('Ошибка', 'Плеер еще не готов');
-      return;
-    }
 
     try {
       // Остановка текущего потока, если выбран тот же
