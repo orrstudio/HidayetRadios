@@ -9,16 +9,20 @@ import {
   ScrollView, 
   Image, 
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  Dimensions,
+  Platform
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import NetInfo from '@react-native-community/netinfo';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 export default function App() {
   const [currentStream, setCurrentStream] = useState(null);
   const [audioSound, setAudioSound] = useState(null);
   const [playerReady, setPlayerReady] = useState(false);
+  const [orientation, setOrientation] = useState(ScreenOrientation.Orientation.PORTRAIT_UP);
 
   const streams = [
     { id: '01', name: 'RADİO NUR', group: 'Hidayet', country: 'TR', url: 'https://canli.hidayetradyolari.com/listen/radyo_nur/radio.mp3', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'audio' },
@@ -65,6 +69,19 @@ export default function App() {
     };
 
     setupAudio();
+  }, []);
+
+  useEffect(() => {
+    const subscription = ScreenOrientation.addOrientationChangeListener((event) => {
+      setOrientation(event.orientationInfo.orientation);
+    });
+
+    // Разрешаем автоматическое вращение экрана
+    ScreenOrientation.unlockAsync();
+
+    return () => {
+      ScreenOrientation.removeOrientationChangeListener(subscription);
+    };
   }, []);
 
   const checkNetworkConnection = async () => {
@@ -135,37 +152,92 @@ export default function App() {
     }
   };
 
+  const getStyles = (orientation) => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#1a1a1a',
+      flexDirection: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 'column' : 'row'
+    },
+    video: {
+      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '50%',
+      height: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 250 : '100%',
+      backgroundColor: 'black'
+    },
+    audioPlayer: {
+      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '50%',
+      height: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 0 : '100%',
+      backgroundColor: 'black'
+    },
+    channelList: {
+      flex: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 1 : 0,
+      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '50%'
+    },
+    channelListContent: {
+      paddingVertical: 10
+    },
+    channelButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#2a2a2a',
+      marginHorizontal: 10,
+      marginVertical: 5,
+      padding: 10,
+      borderRadius: 10
+    },
+    activeChannelButton: {
+      backgroundColor: '#3a3a3a'
+    },
+    channelLogo: {
+      width: 50,
+      height: 50,
+      marginRight: 10,
+      borderRadius: 25
+    },
+    channelInfo: {
+      flex: 1
+    },
+    channelName: {
+      color: 'white',
+      fontSize: 16,
+      fontWeight: 'bold'
+    },
+    channelGroup: {
+      color: '#888',
+      fontSize: 12
+    }
+  });
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <StatusBar barStyle="light-content" />
-      <View style={styles.container}>
+      <View style={getStyles(orientation).container}>
         <VideoView 
-          style={currentStream?.type === 'video' ? styles.video : styles.audioPlayer}
+          style={currentStream?.type === 'video' ? getStyles(orientation).video : getStyles(orientation).audioPlayer}
           player={player}
           allowsFullscreen
         />
         
         <ScrollView 
-          style={styles.channelList}
-          contentContainerStyle={styles.channelListContent}
+          style={getStyles(orientation).channelList}
+          contentContainerStyle={getStyles(orientation).channelListContent}
         >
           {streams.map((stream) => (
             <TouchableOpacity 
               key={stream.id} 
               style={[
-                styles.channelButton, 
-                currentStream?.url === stream.url && styles.activeChannelButton
+                getStyles(orientation).channelButton, 
+                currentStream?.url === stream.url && getStyles(orientation).activeChannelButton
               ]}
               onPress={() => playStream(stream)}
             >
               <Image 
                 source={{ uri: stream.logo }} 
-                style={styles.channelLogo} 
+                style={getStyles(orientation).channelLogo} 
                 resizeMode="contain"
               />
-              <View style={styles.channelInfo}>
-                <Text style={styles.channelName}>{stream.name}</Text>
-                <Text style={styles.channelGroup}>{stream.group} | {stream.country}</Text>
+              <View style={getStyles(orientation).channelInfo}>
+                <Text style={getStyles(orientation).channelName}>{stream.name}</Text>
+                <Text style={getStyles(orientation).channelGroup}>{stream.group} | {stream.country}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -174,56 +246,3 @@ export default function App() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a1a'
-  },
-  video: {
-    width: '100%',
-    height: 250,
-    backgroundColor: 'black'
-  },
-  audioPlayer: {
-    width: '100%',
-    height: 250,
-    backgroundColor: 'black'
-  },
-  channelList: {
-    flex: 1
-  },
-  channelListContent: {
-    paddingVertical: 10
-  },
-  channelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2a2a2a',
-    marginHorizontal: 10,
-    marginVertical: 5,
-    padding: 10,
-    borderRadius: 10
-  },
-  activeChannelButton: {
-    backgroundColor: '#3a3a3a'
-  },
-  channelLogo: {
-    width: 50,
-    height: 50,
-    marginRight: 10,
-    borderRadius: 25
-  },
-  channelInfo: {
-    flex: 1
-  },
-  channelName: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold'
-  },
-  channelGroup: {
-    color: '#888',
-    fontSize: 12
-  }
-});

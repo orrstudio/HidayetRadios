@@ -21,7 +21,8 @@
     "react-dom": "18.3.1",
     "react-native": "0.76.5",
     "react-native-web": "~0.19.13",
-    "expo-video": "~2.0.3"
+    "expo-video": "~2.0.3",
+    "expo-screen-orientation": "~8.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
