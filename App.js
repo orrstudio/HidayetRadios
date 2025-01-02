@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Linking, ScrollView, Image } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Alert, 
+  Linking, 
+  ScrollView, 
+  Image, 
+  SafeAreaView,
+  StatusBar
+} from 'react-native';
 import { Audio } from 'expo-av';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import NetInfo from '@react-native-community/netinfo';
@@ -125,39 +136,42 @@ export default function App() {
   };
 
   return (
-    <View style={styles.container}>
-      <VideoView 
-        style={currentStream?.type === 'video' ? styles.video : styles.audioPlayer}
-        player={player}
-        allowsFullscreen
-      />
-      
-      <ScrollView 
-        style={styles.channelList}
-        contentContainerStyle={styles.channelListContent}
-      >
-        {streams.map((stream) => (
-          <TouchableOpacity 
-            key={stream.id} 
-            style={[
-              styles.channelButton, 
-              currentStream?.url === stream.url && styles.activeChannelButton
-            ]}
-            onPress={() => playStream(stream)}
-          >
-            <Image 
-              source={{ uri: stream.logo }} 
-              style={styles.channelLogo} 
-              resizeMode="contain"
-            />
-            <View style={styles.channelInfo}>
-              <Text style={styles.channelName}>{stream.name}</Text>
-              <Text style={styles.channelGroup}>{stream.group} | {stream.country}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
+    <SafeAreaView style={{ flex: 1 }}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.container}>
+        <VideoView 
+          style={currentStream?.type === 'video' ? styles.video : styles.audioPlayer}
+          player={player}
+          allowsFullscreen
+        />
+        
+        <ScrollView 
+          style={styles.channelList}
+          contentContainerStyle={styles.channelListContent}
+        >
+          {streams.map((stream) => (
+            <TouchableOpacity 
+              key={stream.id} 
+              style={[
+                styles.channelButton, 
+                currentStream?.url === stream.url && styles.activeChannelButton
+              ]}
+              onPress={() => playStream(stream)}
+            >
+              <Image 
+                source={{ uri: stream.logo }} 
+                style={styles.channelLogo} 
+                resizeMode="contain"
+              />
+              <View style={styles.channelInfo}>
+                <Text style={styles.channelName}>{stream.name}</Text>
+                <Text style={styles.channelGroup}>{stream.group} | {stream.country}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
 
