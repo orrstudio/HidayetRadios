@@ -1,12 +1,12 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Linking, ScrollView, Image } from 'react-native';
-import { Audio, Video, ResizeMode } from 'expo-av';
+import { Audio } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import NetInfo from '@react-native-community/netinfo';
 
 export default function App() {
   const [currentStream, setCurrentStream] = useState(null);
-  const audioRef = useRef(null);
-  const videoRef = useRef(null);
+  const [audioSound, setAudioSound] = useState(null);
   const [playerReady, setPlayerReady] = useState(false);
 
   const streams = [
@@ -30,6 +30,13 @@ export default function App() {
     { id: '18', name: 'İBRAHİM TV FARSÇA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_fa/hak_fa/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' }
   ];
 
+  const player = useVideoPlayer(currentStream?.type === 'video' ? currentStream.url : null, (player) => {
+    player.loop = false;
+    if (currentStream?.type === 'video') {
+      player.play();
+    }
+  });
+
   useEffect(() => {
     const setupAudio = async () => {
       try {
@@ -39,12 +46,7 @@ export default function App() {
         });
         
         const defaultStream = streams[4]; // 5-й канал
-        await videoRef.current.loadAsync(
-          { uri: defaultStream.url, type: 'hls' },
-          { shouldPlay: true }
-        ).then(() => {
-          setCurrentStream(defaultStream);
-        });
+        setCurrentStream(defaultStream);
       } catch (error) {
         console.error('Ошибка настройки аудио:', error);
         Alert.alert('Ошибка', `Не удалось настроить аудио: ${error.message}`);
@@ -75,11 +77,11 @@ export default function App() {
     try {
       // Остановка текущего потока, если выбран тот же
       if (currentStream && currentStream.url === stream.url) {
-        if (audioRef.current && stream.type === 'audio') {
-          await audioRef.current.stopAsync();
-        }
-        if (videoRef.current && stream.type === 'video') {
-          await videoRef.current.stopAsync();
+        if (stream.type === 'audio' && audioSound) {
+          await audioSound.stopAsync();
+          setAudioSound(null);
+        } else if (stream.type === 'video') {
+          player.pause();
         }
         setCurrentStream(null);
         return;
@@ -87,13 +89,11 @@ export default function App() {
 
       // Остановка предыдущего потока
       if (currentStream) {
-        if (audioRef.current && currentStream.type === 'audio') {
-          await audioRef.current.stopAsync();
-          await audioRef.current.unloadAsync();
-        }
-        if (videoRef.current && currentStream.type === 'video') {
-          await videoRef.current.stopAsync();
-          await videoRef.current.unloadAsync();
+        if (currentStream.type === 'audio' && audioSound) {
+          await audioSound.stopAsync();
+          await audioSound.unloadAsync();
+        } else if (currentStream.type === 'video') {
+          player.pause();
         }
       }
 
@@ -108,26 +108,15 @@ export default function App() {
           }
         );
 
-        audioRef.current = sound;
-        setCurrentStream(stream);
-
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.error) {
-            console.error('Ошибка воспроизведения:', status.error);
-            Alert.alert('Ошибка', 'Не удалось воспроизвести поток');
-            setCurrentStream(null);
-          }
-        });
+        setAudioSound(sound);
       } 
       // Воспроизведение видео
       else if (stream.type === 'video') {
-        await videoRef.current.loadAsync(
-          { uri: stream.url, type: 'hls' },
-          { shouldPlay: true, resizeMode: ResizeMode.CONTAIN }
-        );
-        setCurrentStream(stream);
+        player.replace(stream.url);
+        player.play();
       }
 
+      setCurrentStream(stream);
     } catch (error) {
       console.error('Критическая ошибка воспроизведения:', error);
       Alert.alert('Ошибка', 'Не удалось воспроизвести поток');
@@ -137,19 +126,12 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Video
-        ref={videoRef}
+      <VideoView 
         style={currentStream?.type === 'video' ? styles.video : styles.audioPlayer}
-        source={{ 
-          uri: currentStream?.type === 'video' ? currentStream.url : '',
-          ...(currentStream?.type === 'video' ? { type: 'hls' } : {})
-        }}
-        useNativeControls
-        resizeMode={ResizeMode.CONTAIN}
-        isLooping={false}
-        shouldPlay={!!currentStream && currentStream.type === 'video'}
+        player={player}
+        allowsFullscreen
       />
-
+      
       <ScrollView 
         style={styles.channelList}
         contentContainerStyle={styles.channelListContent}
