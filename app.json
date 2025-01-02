@@ -30,6 +30,15 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "extra": {
+      "eas": {
+        "projectId": "ae137df5-d41f-4dae-a5dc-d61b580a9963"
+      }
+    },
+    "owner": "orr888",
+    "plugins": [
+      "expo-video"
+    ]
   }
 }
