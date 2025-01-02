@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -11,39 +11,82 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
-  Platform
+  Platform,
+  PanResponder,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { Audio } from 'expo-av';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import NetInfo from '@react-native-community/netinfo';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
+const ResizableHandle = ({ 
+  onResize, 
+  orientation,
+  videoWidthPercentage 
+}) => {
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      
+      onPanResponderMove: (evt, gestureState) => {
+        const isLandscape = 
+          orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT ||
+          orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT;
+
+        if (isLandscape) {
+          const newWidth = videoWidthPercentage + gestureState.dx * 0.1;
+          const constrainedWidth = Math.min(Math.max(newWidth, 30), 90);
+          
+          onResize(constrainedWidth);
+        }
+      },
+      
+      onPanResponderRelease: () => {}
+    })
+  ).current;
+
+  if (
+    orientation !== ScreenOrientation.Orientation.LANDSCAPE_RIGHT && 
+    orientation !== ScreenOrientation.Orientation.LANDSCAPE_LEFT
+  ) {
+    return null;
+  }
+
+  return (
+    <View 
+      {...panResponder.panHandlers}
+      style={{
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 20,
+        backgroundColor: 'rgba(0,0,0,0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000
+      }}
+    >
+      <View style={{
+        width: 5,
+        height: 40,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        borderRadius: 2.5
+      }} />
+    </View>
+  );
+};
+
 export default function App() {
   const [currentStream, setCurrentStream] = useState(null);
   const [audioSound, setAudioSound] = useState(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [orientation, setOrientation] = useState(ScreenOrientation.Orientation.PORTRAIT_UP);
-
-  const streams = [
-    { id: '01', name: 'RADİO NUR', group: 'Hidayet', country: 'TR', url: 'https://canli.hidayetradyolari.com/listen/radyo_nur/radio.mp3', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'audio' },
-    { id: '02', name: 'MPL RADİO', group: 'Hidayet', country: 'TR', url: 'https://canli.hidayetradyolari.com/listen/mpl_radyo/radio.mp3', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'audio' },
-    { id: '03', name: 'MPL TV', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/mpltv/mpltv/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '04', name: 'NUR TV', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/nurtv/nurtv/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '05', name: 'HERAN KURAN HERAN MUTLULUK', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/herankuran/herankuran/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '06', name: 'HERAN KURAN HERAN ZİKİR', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/heranzikir/heranzikir/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '07', name: 'KURAN LAFZI VE 7 RUHU', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/kuran/kuran/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '08', name: 'İBRAHİM TV ALMANCA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/abraham/abraham/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '09', name: 'İBRAHİM TV İNGİLİZCE', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_en/hak_en/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '10', name: 'İBRAHİM TV RUSÇA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_ru/hak_ru/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '11', name: 'İBRAHİM TV ARAPÇA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_ar/hak_ar/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '12', name: 'İBRAHİM TV KÜRTÇE', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_kr/hak_kr/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '13', name: 'İBRAHİM TV FRANSIZCA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_fr/hak_fr/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '14', name: 'İBRAHİM TV İSPANYOLCA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_es/hak_es/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '15', name: 'İBRAHİM TV ÇİNCE', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_ch/hak_ch/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '16', name: 'İBRAHİM TV BULGARCA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_bg/hak_bg/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '17', name: 'İBRAHİM TV FLEMENKÇE', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_ne/hak_ne/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
-    { id: '18', name: 'İBRAHİM TV FARSÇA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_fa/hak_fa/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' }
-  ];
+  
+  // Состояние для пропорций в горизонтальной ориентации
+  const [videoWidthPercentage, setVideoWidthPercentage] = useState(70);
 
   const player = useVideoPlayer(currentStream?.type === 'video' ? currentStream.url : null, (player) => {
     player.loop = false;
@@ -158,19 +201,9 @@ export default function App() {
       backgroundColor: '#1a1a1a',
       flexDirection: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 'column' : 'row'
     },
-    video: {
-      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '70%',
-      height: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 250 : '100%',
-      backgroundColor: 'black'
-    },
-    audioPlayer: {
-      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '70%',
-      height: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 0 : '100%',
-      backgroundColor: 'black'
-    },
     channelList: {
       flex: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 1 : 0,
-      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '30%'
+      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : `${100 - videoWidthPercentage}%`
     },
     channelListContent: {
       paddingVertical: 10
@@ -207,15 +240,80 @@ export default function App() {
     }
   });
 
+  const getVideoStyle = () => {
+    const isLandscape = 
+      orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT ||
+      orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT;
+    
+    if (isLandscape) {
+      return {
+        width: `${videoWidthPercentage}%`,
+        height: '100%'
+      };
+    }
+    
+    return {
+      width: '100%',
+      aspectRatio: 16 / 9
+    };
+  };
+
+  const handleResize = (newWidth) => {
+    console.log('Resize', {
+      currentWidth: videoWidthPercentage,
+      newWidth: newWidth,
+      orientation
+    });
+    
+    setVideoWidthPercentage(newWidth);
+  };
+
+  const streams = [
+    { id: '01', name: 'RADİO NUR', group: 'Hidayet', country: 'TR', url: 'https://canli.hidayetradyolari.com/listen/radyo_nur/radio.mp3', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'audio' },
+    { id: '02', name: 'MPL RADİO', group: 'Hidayet', country: 'TR', url: 'https://canli.hidayetradyolari.com/listen/mpl_radyo/radio.mp3', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'audio' },
+    { id: '03', name: 'MPL TV', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/mpltv/mpltv/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '04', name: 'NUR TV', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/nurtv/nurtv/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '05', name: 'HERAN KURAN HERAN MUTLULUK', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/herankuran/herankuran/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '06', name: 'HERAN KURAN HERAN ZİKİR', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/heranzikir/heranzikir/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '07', name: 'KURAN LAFZI VE 7 RUHU', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/kuran/kuran/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '08', name: 'İBRAHİM TV ALMANCA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/abraham/abraham/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '09', name: 'İBRAHİM TV İNGİLİZCE', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_en/hak_en/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '10', name: 'İBRAHİM TV RUSÇA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_ru/hak_ru/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '11', name: 'İBRAHİM TV ARAPÇA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_ar/hak_ar/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '12', name: 'İBRAHİM TV KÜRTÇE', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_kr/hak_kr/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '13', name: 'İBRAHİM TV FRANSIZCA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_fr/hak_fr/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '14', name: 'İBRAHİM TV İSPANYOLCA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_es/hak_es/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '15', name: 'İBRAHİM TV ÇİNCE', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_ch/hak_ch/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '16', name: 'İBRAHİM TV BULGARCA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_bg/hak_bg/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '17', name: 'İBRAHİM TV FLEMENKÇE', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_ne/hak_ne/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' },
+    { id: '18', name: 'İBRAHİM TV FARSÇA', group: 'Hidayet', country: 'TR', url: 'http://ibrahimiptv.com:1935/hak_fa/hak_fa/playlist.m3u8', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'video' }
+  ];
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <StatusBar barStyle="light-content" />
       <View style={getStyles(orientation).container}>
-        <VideoView 
-          style={currentStream?.type === 'video' ? getStyles(orientation).video : getStyles(orientation).audioPlayer}
-          player={player}
-          allowsFullscreen
-        />
+        <View 
+          style={[
+            getVideoStyle(), 
+            orientation !== ScreenOrientation.Orientation.PORTRAIT_UP && { 
+              position: 'relative' 
+            }
+          ]}
+        >
+          <VideoView 
+            style={{ width: '100%', height: '100%' }}
+            player={player}
+            allowsFullscreen
+          />
+          {orientation !== ScreenOrientation.Orientation.PORTRAIT_UP && (
+            <ResizableHandle 
+              onResize={handleResize} 
+              orientation={orientation} 
+              videoWidthPercentage={videoWidthPercentage}
+            />
+          )}
+        </View>
         
         <ScrollView 
           style={getStyles(orientation).channelList}
