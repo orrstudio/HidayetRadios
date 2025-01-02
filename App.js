@@ -159,18 +159,18 @@ export default function App() {
       flexDirection: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 'column' : 'row'
     },
     video: {
-      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '50%',
+      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '70%',
       height: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 250 : '100%',
       backgroundColor: 'black'
     },
     audioPlayer: {
-      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '50%',
+      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '70%',
       height: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 0 : '100%',
       backgroundColor: 'black'
     },
     channelList: {
       flex: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 1 : 0,
-      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '50%'
+      width: orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? '100%' : '30%'
     },
     channelListContent: {
       paddingVertical: 10
