@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -15,6 +15,7 @@ import {
   PanResponder,
   TouchableWithoutFeedback
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import NetInfo from '@react-native-community/netinfo';
@@ -23,12 +24,20 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 const ResizableHandle = ({ 
   onResize, 
   orientation,
-  videoWidthPercentage 
+  videoWidthPercentage,
+  initialWidth = 70  // Добавляем параметр с начальным значением 70%
 }) => {
+  const startWidthRef = useRef(videoWidthPercentage);
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
+      
+      onPanResponderGrant: () => {
+        // Запоминаем начальную ширину при старте жеста
+        startWidthRef.current = videoWidthPercentage;
+      },
       
       onPanResponderMove: (evt, gestureState) => {
         const isLandscape = 
@@ -36,7 +45,9 @@ const ResizableHandle = ({
           orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT;
 
         if (isLandscape) {
-          const newWidth = videoWidthPercentage + gestureState.dx * 0.1;
+          // Более точный и мягкий коэффициент
+          const widthChangePercent = gestureState.dx * 0.05;  // Уменьшен коэффициент
+          const newWidth = startWidthRef.current + widthChangePercent;
           const constrainedWidth = Math.min(Math.max(newWidth, 30), 90);
           
           onResize(constrainedWidth);
@@ -84,9 +95,26 @@ export default function App() {
   const [audioSound, setAudioSound] = useState(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [orientation, setOrientation] = useState(ScreenOrientation.Orientation.PORTRAIT_UP);
-  
-  // Состояние для пропорций в горизонтальной ориентации
-  const [videoWidthPercentage, setVideoWidthPercentage] = useState(70);
+  const [videoWidthPercentage, setVideoWidthPercentage] = useState(null);
+
+  // Загрузка сохраненной ширины при инициализации
+  useEffect(() => {
+    const loadVideoWidth = async () => {
+      try {
+        const storedWidth = await AsyncStorage.getItem('videoWidthPercentage');
+        if (storedWidth !== null) {
+          setVideoWidthPercentage(parseFloat(storedWidth));
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки ширины видео', error);
+      }
+    };
+
+    loadVideoWidth();
+  }, []);
+
+  const [currentVideoWidth, setCurrentVideoWidth] = useState(70);
+  const [initialWidth, setInitialWidth] = useState(70);
 
   const player = useVideoPlayer(currentStream?.type === 'video' ? currentStream.url : null, (player) => {
     player.loop = false;
@@ -245,9 +273,12 @@ export default function App() {
       orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT ||
       orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT;
     
+    // Если videoWidthPercentage не загружен, используем значение по умолчанию
+    const currentWidth = videoWidthPercentage !== null ? videoWidthPercentage : 70;
+    
     if (isLandscape) {
       return {
-        width: `${videoWidthPercentage}%`,
+        width: `${currentWidth}%`,
         height: '100%'
       };
     }
@@ -258,15 +289,22 @@ export default function App() {
     };
   };
 
-  const handleResize = (newWidth) => {
-    console.log('Resize', {
-      currentWidth: videoWidthPercentage,
-      newWidth: newWidth,
-      orientation
-    });
-    
-    setVideoWidthPercentage(newWidth);
-  };
+  const handleResize = useCallback(async (newWidth) => {
+    try {
+      // Сохраняем новую ширину в AsyncStorage
+      await AsyncStorage.setItem('videoWidthPercentage', newWidth.toString());
+      
+      // Обновляем состояние
+      setVideoWidthPercentage(newWidth);
+      
+      console.log('Resize', {
+        newWidth: newWidth,
+        orientation
+      });
+    } catch (error) {
+      console.error('Ошибка сохранения ширины видео', error);
+    }
+  }, [orientation]);
 
   const streams = [
     { id: '01', name: 'RADİO NUR', group: 'Hidayet', country: 'TR', url: 'https://canli.hidayetradyolari.com/listen/radyo_nur/radio.mp3', logo: 'https://cdn-radiotime-logos.tunein.com/s105291d.png', type: 'audio' },
@@ -306,11 +344,12 @@ export default function App() {
             player={player}
             allowsFullscreen
           />
-          {orientation !== ScreenOrientation.Orientation.PORTRAIT_UP && (
+          {orientation !== ScreenOrientation.Orientation.PORTRAIT_UP && videoWidthPercentage !== null && (
             <ResizableHandle 
               onResize={handleResize} 
               orientation={orientation} 
               videoWidthPercentage={videoWidthPercentage}
+              initialWidth={70}
             />
           )}
         </View>
